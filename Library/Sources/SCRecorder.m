@@ -40,6 +40,8 @@
     size_t _transformFilterBufferHeight;
 }
 
+@property (nonatomic, assign) BOOL isRecording;
+
 @end
 
 @implementation SCRecorder
@@ -111,7 +113,7 @@ static char* SCRecorderPhotoOptionsContext = "PhotoOptionsContext";
 }
 
 - (void)applicationDidEnterBackground:(id)sender {
-    _shouldAutoresumeRecording = _isRecording;
+    _shouldAutoresumeRecording = self.isRecording;
     [self pause];
 }
 
@@ -451,7 +453,7 @@ static char* SCRecorderPhotoOptionsContext = "PhotoOptionsContext";
 
 - (void)record {
     void (^block)() = ^{
-        _isRecording = YES;
+        self.isRecording = YES;
         if (_movieOutput != nil && _session != nil) {
             _movieOutput.maxRecordedDuration = self.maxRecordDuration;
             [self beginRecordSegmentIfNeeded:_session];
@@ -473,7 +475,7 @@ static char* SCRecorderPhotoOptionsContext = "PhotoOptionsContext";
 }
 
 - (void)pause:(void(^)())completionHandler {
-    _isRecording = NO;
+    self.isRecording = NO;
     
     void (^block)() = ^{
         SCRecordSession *recordSession = _session;
@@ -548,7 +550,7 @@ static char* SCRecorderPhotoOptionsContext = "PhotoOptionsContext";
     
     if (CMTIME_IS_VALID(suggestedMaxRecordDuration)) {
         if (CMTIME_COMPARE_INLINE(currentRecordDuration, >=, suggestedMaxRecordDuration)) {
-            _isRecording = NO;
+            self.isRecording = NO;
             
             dispatch_async(_sessionQueue, ^{
                 [recordSession endSegmentWithInfo:[self _createSegmentInfo] completionHandler:^(SCRecordSessionSegment *segment, NSError *error) {
@@ -650,14 +652,14 @@ static char* SCRecorderPhotoOptionsContext = "PhotoOptionsContext";
     dispatch_async(_sessionQueue, ^{
         [_session notifyMovieFileOutputIsReady];
         
-        if (!_isRecording) {
+        if (!self.isRecording) {
             [self pause:_pauseCompletionHandler];
         }
     });
 }
 
 - (void)captureOutput:(AVCaptureFileOutput *)captureOutput didFinishRecordingToOutputFileAtURL:(NSURL *)outputFileURL fromConnections:(NSArray *)connections error:(NSError *)error {
-    _isRecording = NO;
+    self.isRecording = NO;
     
     dispatch_async(_sessionQueue, ^{
         BOOL hasComplete = NO;
@@ -691,7 +693,7 @@ static char* SCRecorderPhotoOptionsContext = "PhotoOptionsContext";
             }
         }];
         
-        if (_isRecording) {
+        if (self.isRecording) {
             [self record];
         }
     });
@@ -718,7 +720,7 @@ static char* SCRecorderPhotoOptionsContext = "PhotoOptionsContext";
         if (!self.audioEnabledAndReady || recordSession.audioInitialized || recordSession.audioInitializationFailed) {
             [self beginRecordSegmentIfNeeded:recordSession];
 
-            if (_isRecording && recordSession.recordSegmentReady) {
+            if (self.isRecording && recordSession.recordSegmentReady) {
                 id<SCRecorderDelegate> delegate = self.delegate;
                 CMTime duration = [self frameDurationFromConnection:connection];
 
@@ -789,7 +791,7 @@ static char* SCRecorderPhotoOptionsContext = "PhotoOptionsContext";
         if (!self.videoEnabledAndReady || recordSession.videoInitialized || recordSession.videoInitializationFailed) {
             [self beginRecordSegmentIfNeeded:recordSession];
 
-            if (_isRecording && recordSession.recordSegmentReady && (!self.videoEnabledAndReady || recordSession.currentSegmentHasVideo)) {
+            if (self.isRecording && recordSession.recordSegmentReady && (!self.videoEnabledAndReady || recordSession.currentSegmentHasVideo)) {
                 id<SCRecorderDelegate> delegate = self.delegate;
 //                NSLog(@"APPENDING");
 
@@ -843,7 +845,7 @@ static char* SCRecorderPhotoOptionsContext = "PhotoOptionsContext";
         }
     }
 
-    if (!_initializeSessionLazily || _isRecording) {
+    if (!_initializeSessionLazily || self.isRecording) {
         SCRecordSession *recordSession = _session;
         if (recordSession != nil) {
             if (captureOutput == _videoOutput) {
